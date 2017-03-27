@@ -1,5 +1,6 @@
 package org.sergiiz.rxkata;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -10,25 +11,24 @@ import io.reactivex.Maybe;
 import io.reactivex.MaybeSource;
 import io.reactivex.Observable;
 import io.reactivex.ObservableSource;
+import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import io.reactivex.SingleSource;
 import io.reactivex.functions.BiFunction;
 import io.reactivex.functions.BiPredicate;
 import io.reactivex.functions.Function;
 import io.reactivex.functions.Predicate;
+import io.reactivex.schedulers.Schedulers;
 
 class CountriesServiceSolved implements CountriesService {
 
     @Override
     public Single<String> countryNameInCapitals(Country country) {
-        return Single.just(country.name)
-                .map(countryStr -> countryStr.toUpperCase(Locale.US));
+        return Single.just(country.name.toUpperCase(Locale.US));
     }
 
     public Single<Integer> countCountries(List<Country> countries) {
-        return Observable.fromIterable(countries)
-                .count()
-                .map(Long::intValue);
+        return Single.just(countries.size());
     }
 
     public Observable<Long> listPopulationOfEachCountry(List<Country> countries) {
@@ -63,12 +63,10 @@ class CountriesServiceSolved implements CountriesService {
 
     @Override
     public Observable<Country> listPopulationMoreThanOneMillionWithTimeoutFallbackToEmpty(final FutureTask<List<Country>> countriesFromNetwork) {
-        return Observable.fromFuture(countriesFromNetwork)
-                .timeout(1 ,TimeUnit.HOURS)
+        return Observable.fromFuture(countriesFromNetwork, Schedulers.io())
                 .flatMapIterable(country -> country)
-                .filter(country -> country.getPopulation() > 1000000);
-
-
+                .filter(country -> country.getPopulation() > 1000000)
+                .timeout(1, TimeUnit.MILLISECONDS, Observable.empty());
     }
 
     @Override
@@ -90,7 +88,8 @@ class CountriesServiceSolved implements CountriesService {
 
     @Override
     public Single<Map<String, Long>> mapCountriesToNamePopulation(List<Country> countries) {
-        return null;
+        return Observable.fromIterable(countries)
+                .toMap(Country::getName, Country::getPopulation);
     }
 
     @Override
